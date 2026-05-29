@@ -18,10 +18,11 @@ services:
       - MAX_RESTART_ATTEMPTS=3
       - WAIT_AFTER_RESTART=10000
       # ====== NOTIFICAÇÃO VIA API EXTERNA ======
+      # Pode ser a mesma API monitorada ou outra API externa para enviar alertas
       - NOTIFICATION_API_URL=https://SUA_URL_EVOLUTION_AQUI
       - NOTIFICATION_API_KEY=SUA_API_KEY_AQUI
-      - NOTIFICATION_SENDER_INSTANCE=INSTANCIA_NAME_AQUI
-      - NOTIFICATION_ADMIN_NUMBER=NUMERO_WHATSAPP_AQUI
+      - NOTIFICATION_SENDER_INSTANCE=INSTANCIA_QUE_ENVIA_ALERTA
+      - NOTIFICATION_ADMIN_NUMBER=5500000000000
       - NOTIFICATION_ENABLED=true
       # ====== SERVIDOR HTTP (DASHBOARD API) ======
       - SERVER_PORT=3500
@@ -56,8 +57,8 @@ services:
         constraints:
           - node.role == manager
       labels:
-        - traefik.enable=1
-        - traefik.http.routers.evo-monitor-dashboard.rule=Host(`monitor.seudominio.com.br`) ## URL do Dashboard
+        - traefik.enable=true
+        - traefik.http.routers.evo-monitor-dashboard.rule=Host(`monitor.seudominio.com.br`)
         - traefik.http.routers.evo-monitor-dashboard.entrypoints=websecure
         - traefik.http.routers.evo-monitor-dashboard.priority=1
         - traefik.http.routers.evo-monitor-dashboard.tls.certresolver=letsencryptresolver
