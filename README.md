@@ -10,7 +10,10 @@ Desenvolvido em **React + Vite + TailwindCSS**, servido via **Nginx** em contain
 - **Indicadores visuais**: Cards com contadores (online, offline, reconectadas, ignoradas)
 - **Tabela de instâncias**: Lista detalhada com status, tentativas e última verificação
 - **Auto-refresh**: Atualiza automaticamente a cada 15 segundos
-- **Tela de Configurações**: Configurar Telegram e personalizar mensagens de alerta
+- **Tela de Configurações**: 3 abas (Evolution | Telegram | Template)
+  - **Evolution**: URL da API, API Key Global, Intervalo de verificação
+  - **Telegram**: Token do Bot, Chat ID + tutorial integrado
+  - **Template**: Editor de mensagem personalizável com variáveis dinâmicas
 - **Teste de notificação**: Botão para enviar notificação de teste antes de salvar
 - **Modo demo**: Exibe dados de exemplo quando não há API conectada
 - **Proxy integrado**: Nginx faz proxy das requisições `/api/*` para o monitor Go
@@ -148,22 +151,23 @@ As notificações são enviadas via **Telegram Bot**. Você pode configurar dire
 O template de notificação suporta variáveis dinâmicas:
 
 | Variável | Descrição |
-|----------|-----------|
-| `{instance}` | Nome da instância que caiu |
-| `{status}` | Status atual da instância |
-| `{attempts}` | Número de tentativas de reconexão |
-| `{time}` | Data/hora do evento |
-| `{api_url}` | URL da API monitorada |
+|----------|----------|
+| `{{instance_name}}` | Nome da instância que caiu |
+| `{{status}}` | Status atual da instância |
+| `{{attempts}}` | Número de tentativas de reconexão |
+| `{{max_attempts}}` | Máximo de tentativas configurado |
+| `{{timestamp}}` | Data/hora do evento |
+| `{{server_url}}` | URL da API monitorada |
 
 **Template padrão:**
 ```
 ⚠️ *ALERTA - Evolution Monitor*
 
-A instância *{instance}* não reconectou após {attempts} tentativas.
+A instância *{{instance_name}}* não reconectou após {{attempts}}/{{max_attempts}} tentativas.
 
-📊 Status: `{status}`
-🕐 Horário: {time}
-🔗 API: {api_url}
+📊 Status: `{{status}}`
+🕐 Horário: {{timestamp}}
+🔗 API: {{server_url}}
 
 Verifique o painel ou escaneie o QR Code novamente.
 ```
@@ -206,7 +210,7 @@ VITE_MONITOR_API_URL=http://localhost:3500
 │   ├── hooks/useMonitor.ts    # Hook de conexão com API
 │   ├── pages/
 │   │   ├── Dashboard.tsx      # Página principal
-│   │   └── Settings.tsx       # Configurações (Telegram + Template)
+│   │   └── Settings.tsx       # Configurações (Evolution | Telegram | Template)
 │   └── index.css              # Tema Command Center
 ├── Dockerfile                 # Build multi-stage (Node → Nginx)
 ├── nginx.conf                 # Config Nginx (SPA + proxy API)
@@ -221,7 +225,9 @@ VITE_MONITOR_API_URL=http://localhost:3500
 - [x] Tabela de instâncias
 - [x] Auto-refresh
 - [x] Modo demo
-- [x] Tela de configurações (Telegram + Template)
+- [x] Tela de configurações com 3 abas (Evolution | Telegram | Template)
+- [x] Configuração da Evolution API via dashboard
+- [x] Intervalo de verificação configurável
 - [x] Teste de notificação pelo dashboard
 - [x] Integração Traefik + Docker Swarm
 - [ ] Histórico de eventos (timeline)
