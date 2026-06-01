@@ -10,6 +10,8 @@ Desenvolvido em **React + Vite + TailwindCSS**, servido via **Nginx** em contain
 - **Indicadores visuais**: Cards com contadores (online, offline, reconectadas, ignoradas)
 - **Tabela de instâncias**: Lista detalhada com status, tentativas e última verificação
 - **Auto-refresh**: Atualiza automaticamente a cada 15 segundos
+- **Tela de Configurações**: Configurar Telegram e personalizar mensagens de alerta
+- **Teste de notificação**: Botão para enviar notificação de teste antes de salvar
 - **Modo demo**: Exibe dados de exemplo quando não há API conectada
 - **Proxy integrado**: Nginx faz proxy das requisições `/api/*` para o monitor Go
 - **Integração Traefik**: Labels prontas para SSL automático via Let's Encrypt
@@ -39,6 +41,9 @@ services:
     networks:
       - SuaRedeAqui
 
+    volumes:
+      - monitor_data:/data
+
     environment:
       - TZ=America/Sao_Paulo
       # ====== API MONITORADA ======
@@ -48,13 +53,10 @@ services:
       - CHECK_INTERVAL=60000
       - MAX_RESTART_ATTEMPTS=3
       - WAIT_AFTER_RESTART=10000
-      # ====== NOTIFICAÇÃO VIA API EXTERNA ======
-      # Pode ser a mesma API monitorada ou outra API externa para enviar alertas
-      - NOTIFICATION_API_URL=https://SUA_URL_EVOLUTION_AQUI
-      - NOTIFICATION_API_KEY=SUA_API_KEY_AQUI
-      - NOTIFICATION_SENDER_INSTANCE=INSTANCIA_QUE_ENVIA_ALERTA
-      - NOTIFICATION_ADMIN_NUMBER=5500000000000
-      - NOTIFICATION_ENABLED=true
+      # ====== TELEGRAM (pode ser configurado via dashboard) ======
+      - TELEGRAM_BOT_TOKEN=
+      - TELEGRAM_CHAT_ID=
+      - TELEGRAM_ENABLED=true
       # ====== SERVIDOR HTTP (DASHBOARD API) ======
       - SERVER_PORT=3500
       # ====== CONFIGURAÇÕES AVANÇADAS ======
@@ -103,6 +105,9 @@ services:
         max-size: "5m"
         max-file: "2"
 
+volumes:
+  monitor_data:
+
 networks:
   SuaRedeAqui:
     external: true
@@ -115,19 +120,52 @@ networks:
 |-------------|-----------|---------|
 | `SUA_URL_EVOLUTION_AQUI` | URL da Evolution API monitorada | `https://evo.seudominio.com.br` |
 | `SUA_API_KEY_AQUI` | API Key global da Evolution API | `SUA_CHAVE_AQUI` |
-| `INSTANCIA_QUE_ENVIA_ALERTA` | Instância que enviará os alertas | `MinhaInstancia` |
-| `5500000000000` | Número WhatsApp para receber alertas | `5511999999999` |
 | `monitor.seudominio.com.br` | Subdomínio do dashboard | `monitor.empresa.com.br` |
 | `SuaRedeAqui` | Nome da rede overlay (mesma do Traefik) | `MinhaRede` |
 
-## Notificação via API Externa
+## Configuração do Telegram
 
-Se a VPS monitorada possui apenas **uma instância**, configure a notificação por outra VPS:
+As notificações são enviadas via **Telegram Bot**. Você pode configurar diretamente pelo dashboard (tela de Configurações) ou via variáveis de ambiente.
 
+### Como criar um Bot no Telegram
+
+1. Abra o Telegram e busque por **@BotFather**
+2. Envie o comando `/newbot`
+3. Escolha um nome para o bot (ex: "Monitor Evolution")
+4. Escolha um username (ex: `monitor_evolution_bot`)
+5. O BotFather retornará o **Token** — copie e use em `TELEGRAM_BOT_TOKEN`
+
+### Como obter o Chat ID
+
+1. Abra o Telegram e busque por **@userinfobot**
+2. Envie `/start` — ele retornará seu **Chat ID**
+3. Ou: envie uma mensagem para seu bot, depois acesse:
+   `https://api.telegram.org/bot<SEU_TOKEN>/getUpdates`
+   O `chat.id` estará na resposta JSON
+
+## Personalização da Mensagem
+
+O template de notificação suporta variáveis dinâmicas:
+
+| Variável | Descrição |
+|----------|-----------|
+| `{instance}` | Nome da instância que caiu |
+| `{status}` | Status atual da instância |
+| `{attempts}` | Número de tentativas de reconexão |
+| `{time}` | Data/hora do evento |
+| `{api_url}` | URL da API monitorada |
+
+**Template padrão:**
 ```
-EVOLUTION_API_URL=https://evo.vps-monitorada.com.br    # API monitorada
-NOTIFICATION_API_URL=https://evo.outra-vps.com.br      # API que envia o alerta
-NOTIFICATION_SENDER_INSTANCE=InstanciaOutraVPS          # Instância da outra VPS
+⚠️ *ALERTA - Evolution Monitor*
+
+A instância *{instance}* não reconectou após {attempts} tentativas.
+
+📊 Status: `{status}`
+🕐 Horário: {time}
+🔗 API: {api_url}
+
+Verifique o painel ou escaneie o QR Code novamente.
 ```
 
 ## Desenvolvimento Local
@@ -156,7 +194,7 @@ VITE_MONITOR_API_URL=http://localhost:3500
 | Build | Vite 7 |
 | Styling | TailwindCSS 4 + shadcn/ui |
 | Servidor | Nginx Alpine |
-| Container | Docker multi-stage |
+| Container | Docker |
 | Imagem final | ~25MB |
 
 ## Estrutura
@@ -166,7 +204,9 @@ VITE_MONITOR_API_URL=http://localhost:3500
 ├── client/src/
 │   ├── components/dashboard/  # Componentes do dashboard
 │   ├── hooks/useMonitor.ts    # Hook de conexão com API
-│   ├── pages/Dashboard.tsx    # Página principal
+│   ├── pages/
+│   │   ├── Dashboard.tsx      # Página principal
+│   │   └── Settings.tsx       # Configurações (Telegram + Template)
 │   └── index.css              # Tema Command Center
 ├── Dockerfile                 # Build multi-stage (Node → Nginx)
 ├── nginx.conf                 # Config Nginx (SPA + proxy API)
@@ -181,6 +221,8 @@ VITE_MONITOR_API_URL=http://localhost:3500
 - [x] Tabela de instâncias
 - [x] Auto-refresh
 - [x] Modo demo
+- [x] Tela de configurações (Telegram + Template)
+- [x] Teste de notificação pelo dashboard
 - [x] Integração Traefik + Docker Swarm
 - [ ] Histórico de eventos (timeline)
 - [ ] Gráficos de uptime
