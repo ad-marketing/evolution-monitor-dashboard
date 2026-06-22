@@ -1,12 +1,27 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
+/**
+ * Formatos reais da API do monitor Go (v2.2.0):
+ * GET /api/status    -> { total, ok, failed, reconnected, ignored, last_check, status }
+ * GET /api/instances -> [ { name, status:"open"|"close"|..., result:"ok"|"failed", attempts } ]
+ * GET /api/stats     -> { started_at, uptime_seconds, cycles_executed, total_reconnects,
+ *                         total_failures, total_notifications, chatwoot_resyncs }
+ */
+
+// Instância como entregue pela API
+export interface RawInstance {
+  name: string;
+  status: string; // estado de conexão da Evolution: "open", "close", "connecting"...
+  result: string; // resultado do monitor: "ok", "failed", "reconnected", "ignored"
+  attempts?: number;
+}
+
+// Instância normalizada para a UI
 export interface InstanceStatus {
   name: string;
-  state: string;
-  status: string;
-  last_check: string;
-  attempts?: number;
-  profile_name?: string;
+  state: string; // estado de conexão bruto (open/close/...)
+  result: string; // ok/failed/reconnected/ignored
+  attempts: number;
 }
 
 export interface MonitorStatus {
@@ -21,53 +36,24 @@ export interface MonitorStatus {
 
 export interface MonitorStats {
   started_at: string;
-  uptime: string;
-  cycle_count: number;
-  last_cycle: {
-    timestamp: string;
-    total: number;
-    ok: number;
-    reconnected: number;
-    failed: number;
-    ignored: number;
-    instances: InstanceStatus[];
-  } | null;
+  uptime_seconds: number;
+  cycles_executed: number;
+  total_reconnects: number;
+  total_failures: number;
+  total_notifications: number;
+  chatwoot_resyncs: number;
 }
 
 const API_BASE = import.meta.env.VITE_MONITOR_API_URL || "";
 
-// Demo data for when no API is connected
-const DEMO_STATUS: MonitorStatus = {
-  status: "active",
-  last_check: new Date().toISOString(),
-  total: 4,
-  ok: 3,
-  reconnected: 0,
-  failed: 1,
-  ignored: 0,
-};
-
-const DEMO_INSTANCES: InstanceStatus[] = [
-  { name: "AdMarketingAPI", state: "open", status: "ok", last_check: new Date().toISOString() },
-  { name: "PDMReservas", state: "open", status: "ok", last_check: new Date().toISOString() },
-  { name: "Newstur", state: "close", status: "failed", last_check: new Date().toISOString(), attempts: 3 },
-  { name: "SuporteBot", state: "open", status: "ok", last_check: new Date().toISOString() },
-];
-
-const DEMO_STATS: MonitorStats = {
-  started_at: new Date(Date.now() - 86400000).toISOString(),
-  uptime: "24h12m33s",
-  cycle_count: 1447,
-  last_cycle: {
-    timestamp: new Date().toISOString(),
-    total: 4,
-    ok: 3,
-    reconnected: 0,
-    failed: 1,
-    ignored: 0,
-    instances: DEMO_INSTANCES,
-  },
-};
+function normalizeInstance(raw: RawInstance): InstanceStatus {
+  return {
+    name: raw.name,
+    state: raw.status ?? "",
+    result: raw.result ?? "",
+    attempts: typeof raw.attempts === "number" ? raw.attempts : 0,
+  };
+}
 
 export function useMonitor(refreshInterval = 15000) {
   const [status, setStatus] = useState<MonitorStatus | null>(null);
@@ -76,7 +62,6 @@ export function useMonitor(refreshInterval = 15000) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [isDemo, setIsDemo] = useState(false);
   const failCount = useRef(0);
 
   const fetchData = useCallback(async () => {
@@ -92,7 +77,7 @@ export function useMonitor(refreshInterval = 15000) {
       }
 
       const statusText = await statusRes.clone().text();
-      if (statusText.startsWith("<")) {
+      if (statusText.trim().startsWith("<")) {
         throw new Error("API retornou HTML ao invés de JSON");
       }
 
@@ -102,26 +87,19 @@ export function useMonitor(refreshInterval = 15000) {
         statsRes.json(),
       ]);
 
-      setStatus(statusData);
-      setInstances(instancesData);
-      setStats(statsData);
+      setStatus(statusData as MonitorStatus);
+      setInstances(
+        Array.isArray(instancesData)
+          ? (instancesData as RawInstance[]).map(normalizeInstance)
+          : []
+      );
+      setStats(statsData as MonitorStats);
       setError(null);
-      setIsDemo(false);
       setLastUpdate(new Date());
       failCount.current = 0;
     } catch (err) {
       failCount.current++;
-      // After 2 failed attempts, show demo data
-      if (failCount.current >= 2) {
-        setStatus(DEMO_STATUS);
-        setInstances(DEMO_INSTANCES);
-        setStats(DEMO_STATS);
-        setIsDemo(true);
-        setError(null);
-        setLastUpdate(new Date());
-      } else {
-        setError(err instanceof Error ? err.message : "Erro desconhecido");
-      }
+      setError(err instanceof Error ? err.message : "Erro desconhecido");
     } finally {
       setIsLoading(false);
     }
@@ -139,7 +117,6 @@ export function useMonitor(refreshInterval = 15000) {
     stats,
     isLoading,
     error,
-    isDemo,
     lastUpdate,
     refetch: fetchData,
   };

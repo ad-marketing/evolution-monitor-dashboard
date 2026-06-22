@@ -9,6 +9,19 @@ interface HeaderProps {
   onRefresh: () => void;
 }
 
+/** Converte segundos de uptime em "Xd Yh Zm". */
+function formatUptime(totalSeconds: number): string {
+  if (!totalSeconds || totalSeconds < 0) return "0m";
+  const d = Math.floor(totalSeconds / 86400);
+  const h = Math.floor((totalSeconds % 86400) / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const parts: string[] = [];
+  if (d > 0) parts.push(`${d}d`);
+  if (h > 0) parts.push(`${h}h`);
+  parts.push(`${m}m`);
+  return parts.join(" ");
+}
+
 export function Header({ stats, lastUpdate, onRefresh }: HeaderProps) {
   return (
     <header className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
@@ -23,7 +36,7 @@ export function Header({ stats, lastUpdate, onRefresh }: HeaderProps) {
               Evolution Monitor
             </h1>
             <p className="text-xs text-muted-foreground font-mono">
-              {stats?.uptime ? `Uptime: ${stats.uptime}` : "Conectando..."}
+              {stats ? `Uptime: ${formatUptime(stats.uptime_seconds)}` : "Conectando..."}
             </p>
           </div>
         </div>
@@ -34,7 +47,7 @@ export function Header({ stats, lastUpdate, onRefresh }: HeaderProps) {
           {stats && (
             <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground font-mono">
               <span className="text-foreground/70">
-                Ciclo #{stats.cycle_count}
+                Ciclo #{stats.cycles_executed}
               </span>
             </div>
           )}
