@@ -10,6 +10,11 @@ Desenvolvido em **React + Vite + TailwindCSS**, servido via **Nginx** em contain
 - **Indicadores visuais**: Cards com contadores (online, offline, reconectadas, ignoradas)
 - **Tabela de instâncias**: Lista detalhada com status, tentativas e última verificação
 - **Auto-refresh**: Atualiza automaticamente a cada 15 segundos
+- **Tela de Configurações**: 3 abas (Evolution | Telegram | Template)
+  - **Evolution**: URL da API, API Key Global, Intervalo de verificação
+  - **Telegram**: Token do Bot, Chat ID + tutorial integrado
+  - **Template**: Editor de mensagem personalizável com variáveis dinâmicas
+- **Teste de notificação**: Botão para enviar notificação de teste antes de salvar
 - **Modo demo**: Exibe dados de exemplo quando não há API conectada
 - **Proxy integrado**: Nginx faz proxy das requisições `/api/*` para o monitor Go
 - **Integração Traefik**: Labels prontas para SSL automático via Let's Encrypt
@@ -40,6 +45,9 @@ services:
     networks:
       - SuaRedeAqui
 
+    volumes:
+      - monitor_data:/data
+
     environment:
       - TZ=America/Sao_Paulo
       # ====== API MONITORADA ======
@@ -53,10 +61,6 @@ services:
       - TELEGRAM_BOT_TOKEN=
       - TELEGRAM_CHAT_ID=
       - TELEGRAM_ENABLED=true
-      # ====== CHATWOOT RECONNECTOR (pode ser configurado via dashboard) ======
-      - CHATWOOT_RECONNECT_ENABLED=false
-      - CHATWOOT_RECONNECT_INTERVAL=30
-      - CHATWOOT_RECONNECT_ON_RECONNECT=false
       # ====== SERVIDOR HTTP (DASHBOARD API) ======
       - SERVER_PORT=3500
       # ====== CONFIGURAÇÕES AVANÇADAS ======
@@ -105,6 +109,9 @@ services:
         max-size: "5m"
         max-file: "2"
 
+volumes:
+  monitor_data:
+
 networks:
   SuaRedeAqui:
     external: true
@@ -120,27 +127,51 @@ networks:
 | `monitor.seudominio.com.br` | Subdomínio do dashboard | `monitor.empresa.com.br` |
 | `SuaRedeAqui` | Nome da rede overlay (mesma do Traefik) | `MinhaRede` |
 
-## Tela de Configurações
+## Configuração do Telegram
 
-A tela de Configurações (ícone **Config** no cabeçalho) reúne 4 abas para gerenciar o monitor sem reiniciar containers:
+As notificações são enviadas via **Telegram Bot**. Você pode configurar diretamente pelo dashboard (tela de Configurações) ou via variáveis de ambiente.
 
-| Aba | O que configura |
-|-----|------------------|
-| **Evolution** | URL da API, API Key e intervalo de verificação |
-| **Telegram** | Token do bot, Chat ID, ativação e botão de teste de notificação |
-| **Template** | Editor do texto do alerta com variáveis dinâmicas |
-| **Chatwoot** | Chatwoot Reconnector — re-sincronização da integração (ver abaixo) |
+### Como criar um Bot no Telegram
 
-### Aba Chatwoot (v2.2.0)
+1. Abra o Telegram e busque por **@BotFather**
+2. Envie o comando `/newbot`
+3. Escolha um nome para o bot (ex: "Monitor Evolution")
+4. Escolha um username (ex: `monitor_evolution_bot`)
+5. O BotFather retornará o **Token** — copie e use em `TELEGRAM_BOT_TOKEN`
 
-O **Chatwoot Reconnector** re-sincroniza automaticamente a integração nativa Evolution ↔ Chatwoot, evitando a perda do vínculo com a inbox quando uma instância reconecta. A aba permite:
+### Como obter o Chat ID
 
-- **Ativar/desativar** o reconnector
-- **Intervalo periódico** (Modo A) — re-sincroniza todas as instâncias conectadas a cada N minutos (padrão: 30)
-- **Re-sincronizar ao reconectar** (Modo B) — re-aplica a integração logo após o monitor reconectar uma instância
-- **Re-sincronizar agora** — dispara uma re-sincronização manual imediata
+1. Abra o Telegram e busque por **@userinfobot**
+2. Envie `/start` — ele retornará seu **Chat ID**
+3. Ou: envie uma mensagem para seu bot, depois acesse:
+   `https://api.telegram.org/bot<SEU_TOKEN>/getUpdates`
+   O `chat.id` estará na resposta JSON
 
-Detalhes técnicos no [README do backend](https://github.com/ad-marketing/evolution-monitor-go#chatwoot-reconnector-v220).
+## Personalização da Mensagem
+
+O template de notificação suporta variáveis dinâmicas:
+
+| Variável | Descrição |
+|----------|----------|
+| `{{instance_name}}` | Nome da instância que caiu |
+| `{{status}}` | Status atual da instância |
+| `{{attempts}}` | Número de tentativas de reconexão |
+| `{{max_attempts}}` | Máximo de tentativas configurado |
+| `{{timestamp}}` | Data/hora do evento |
+| `{{server_url}}` | URL da API monitorada |
+
+**Template padrão:**
+```
+⚠️ *ALERTA - Evolution Monitor*
+
+A instância *{{instance_name}}* não reconectou após {{attempts}}/{{max_attempts}} tentativas.
+
+📊 Status: `{{status}}`
+🕐 Horário: {{timestamp}}
+🔗 API: {{server_url}}
+
+Verifique o painel ou escaneie o QR Code novamente.
+```
 
 ## Desenvolvimento Local
 
@@ -168,7 +199,7 @@ VITE_MONITOR_API_URL=http://localhost:3500
 | Build | Vite 7 |
 | Styling | TailwindCSS 4 + shadcn/ui |
 | Servidor | Nginx Alpine |
-| Container | Docker multi-stage |
+| Container | Docker |
 | Imagem final | ~25MB |
 
 ## Estrutura
@@ -177,10 +208,10 @@ VITE_MONITOR_API_URL=http://localhost:3500
 .
 ├── client/src/
 │   ├── components/dashboard/  # Componentes do dashboard
-│   ├── hooks/useMonitor.ts    # Hook de conexão com API (status/instâncias)
-│   ├── hooks/useSettings.ts   # Hook de configurações (settings/chatwoot)
-│   ├── pages/Dashboard.tsx    # Página principal
-│   ├── pages/Settings.tsx     # Tela de configurações (4 abas)
+│   ├── hooks/useMonitor.ts    # Hook de conexão com API
+│   ├── pages/
+│   │   ├── Dashboard.tsx      # Página principal
+│   │   └── Settings.tsx       # Configurações (Evolution | Telegram | Template)
 │   └── index.css              # Tema Command Center
 ├── Dockerfile                 # Build multi-stage (Node → Nginx)
 ├── nginx.conf                 # Config Nginx (SPA + proxy API)
@@ -195,6 +226,10 @@ VITE_MONITOR_API_URL=http://localhost:3500
 - [x] Tabela de instâncias
 - [x] Auto-refresh
 - [x] Modo demo
+- [x] Tela de configurações com 3 abas (Evolution | Telegram | Template)
+- [x] Configuração da Evolution API via dashboard
+- [x] Intervalo de verificação configurável
+- [x] Teste de notificação pelo dashboard
 - [x] Integração Traefik + Docker Swarm
 - [x] Tela de Configurações (Evolution, Telegram, Template)
 - [x] Aba Chatwoot — Chatwoot Reconnector (v2.2.0)
