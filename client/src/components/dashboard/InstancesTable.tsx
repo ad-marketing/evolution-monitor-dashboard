@@ -17,27 +17,34 @@ interface InstancesTableProps {
   isLoading: boolean;
 }
 
-function getStatusConfig(status: string) {
-  switch (status) {
+/**
+ * O badge de Status usa o campo `result` do monitor:
+ *   ok | reconnected | failed | ignored
+ */
+function getStatusConfig(result: string) {
+  switch (result) {
     case "ok":
       return {
         label: "Online",
         dotClass: "status-dot-online",
-        badgeClass: "bg-[oklch(0.75_0.18_155_/_0.1)] text-[oklch(0.75_0.18_155)] border-[oklch(0.75_0.18_155_/_0.3)]",
+        badgeClass:
+          "bg-[oklch(0.75_0.18_155_/_0.1)] text-[oklch(0.75_0.18_155)] border-[oklch(0.75_0.18_155_/_0.3)]",
         icon: Wifi,
       };
     case "reconnected":
       return {
         label: "Reconectada",
         dotClass: "status-dot-connecting",
-        badgeClass: "bg-[oklch(0.7_0.15_80_/_0.1)] text-[oklch(0.7_0.15_80)] border-[oklch(0.7_0.15_80_/_0.3)]",
+        badgeClass:
+          "bg-[oklch(0.7_0.15_80_/_0.1)] text-[oklch(0.7_0.15_80)] border-[oklch(0.7_0.15_80_/_0.3)]",
         icon: RefreshCw,
       };
     case "failed":
       return {
         label: "Offline",
         dotClass: "status-dot-offline",
-        badgeClass: "bg-[oklch(0.65_0.22_25_/_0.1)] text-[oklch(0.65_0.22_25)] border-[oklch(0.65_0.22_25_/_0.3)]",
+        badgeClass:
+          "bg-[oklch(0.65_0.22_25_/_0.1)] text-[oklch(0.65_0.22_25)] border-[oklch(0.65_0.22_25_/_0.3)]",
         icon: WifiOff,
       };
     case "ignored":
@@ -57,16 +64,18 @@ function getStatusConfig(status: string) {
   }
 }
 
-function formatTime(dateStr: string) {
-  try {
-    const date = new Date(dateStr);
-    return date.toLocaleTimeString("pt-BR", {
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-  } catch {
-    return "—";
+/** Traduz o estado bruto de conexão da Evolution para um rótulo legível. */
+function formatState(state: string) {
+  switch (state) {
+    case "open":
+      return "Conectado";
+    case "close":
+    case "closed":
+      return "Desconectado";
+    case "connecting":
+      return "Conectando";
+    default:
+      return state ? state : "—";
   }
 }
 
@@ -128,19 +137,19 @@ export function InstancesTable({ instances, isLoading }: InstancesTableProps) {
                 Instância
               </TableHead>
               <TableHead className="text-xs font-mono uppercase tracking-wider text-muted-foreground h-9">
-                Estado
+                Situação
               </TableHead>
               <TableHead className="text-xs font-mono uppercase tracking-wider text-muted-foreground h-9 hidden sm:table-cell">
-                Tentativas
+                Conexão
               </TableHead>
               <TableHead className="text-xs font-mono uppercase tracking-wider text-muted-foreground h-9 hidden md:table-cell pr-6">
-                Última Verificação
+                Tentativas
               </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {instances.map((instance) => {
-              const config = getStatusConfig(instance.status);
+              const config = getStatusConfig(instance.result);
               const Icon = config.icon;
 
               return (
@@ -175,12 +184,12 @@ export function InstancesTable({ instances, isLoading }: InstancesTableProps) {
                   </TableCell>
                   <TableCell className="py-3 hidden sm:table-cell">
                     <span className="font-mono text-xs text-muted-foreground">
-                      {instance.attempts ? `${instance.attempts}x` : "—"}
+                      {formatState(instance.state)}
                     </span>
                   </TableCell>
                   <TableCell className="py-3 hidden md:table-cell pr-6">
                     <span className="font-mono text-xs text-muted-foreground">
-                      {formatTime(instance.last_check)}
+                      {instance.attempts > 0 ? `${instance.attempts}x` : "—"}
                     </span>
                   </TableCell>
                 </TableRow>

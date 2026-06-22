@@ -25,8 +25,21 @@ import {
   Plug,
   RefreshCw,
   Loader2,
+  Globe,
+  KeyRound,
+  Clock,
+  Info,
 } from "lucide-react";
 import { toast } from "sonner";
+
+const INTERVAL_OPTIONS = [
+  { label: "30 segundos", seconds: 30 },
+  { label: "1 minuto", seconds: 60 },
+  { label: "2 minutos", seconds: 120 },
+  { label: "3 minutos", seconds: 180 },
+  { label: "5 minutos", seconds: 300 },
+  { label: "10 minutos", seconds: 600 },
+];
 
 export default function Settings() {
   const {
@@ -63,7 +76,7 @@ export default function Settings() {
   useEffect(() => {
     setEvoUrl(settings.evolution.api_url || "");
     setEvoKey("");
-    setEvoInterval(Math.round((settings.evolution.check_interval || 60000) / 1000));
+    setEvoInterval(Math.max(10, Math.round((settings.evolution.check_interval || 60000) / 1000)));
     setTgToken("");
     setTgTokenSet(settings.telegram.bot_token_set);
     setTgChatId(settings.telegram.chat_id || "");
@@ -197,15 +210,22 @@ export default function Settings() {
           <TabsContent value="evolution" className="mt-4">
             <Card className="border-border/50 bg-card/50">
               <CardHeader>
-                <CardTitle className="text-base">Evolution API</CardTitle>
-                <CardDescription className="text-xs">
-                  Conexão com a instância da Evolution API monitorada.
-                </CardDescription>
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                    <Server className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">Evolution API</CardTitle>
+                    <CardDescription className="text-xs">
+                      Configure a conexão com a Evolution API que será monitorada.
+                    </CardDescription>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-6">
                 <div className="space-y-1.5">
-                  <Label htmlFor="evo-url" className="text-xs">
-                    URL da API
+                  <Label htmlFor="evo-url" className="text-xs flex items-center gap-1.5">
+                    <Globe className="w-3.5 h-3.5 text-primary" /> URL da API
                   </Label>
                   <Input
                     id="evo-url"
@@ -214,13 +234,14 @@ export default function Settings() {
                     onChange={(e) => setEvoUrl(e.target.value)}
                     className="font-mono text-xs"
                   />
+                  <p className="text-xs text-muted-foreground">
+                    URL completa da Evolution API (sem barra no final).
+                  </p>
                 </div>
+
                 <div className="space-y-1.5">
-                  <Label htmlFor="evo-key" className="text-xs">
-                    API Key{" "}
-                    <span className="text-muted-foreground">
-                      (deixe vazio para manter a atual)
-                    </span>
+                  <Label htmlFor="evo-key" className="text-xs flex items-center gap-1.5">
+                    <KeyRound className="w-3.5 h-3.5 text-primary" /> API Key Global
                   </Label>
                   <Input
                     id="evo-key"
@@ -230,25 +251,59 @@ export default function Settings() {
                     onChange={(e) => setEvoKey(e.target.value)}
                     className="font-mono text-xs"
                   />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="evo-interval" className="text-xs">
-                    Intervalo de verificação (segundos)
-                  </Label>
-                  <Input
-                    id="evo-interval"
-                    type="number"
-                    min={10}
-                    value={evoInterval}
-                    onChange={(e) => setEvoInterval(Number(e.target.value))}
-                    className="font-mono text-xs"
-                  />
                   <p className="text-xs text-muted-foreground">
-                    Mínimo de 10 segundos. Padrão: 60s.
+                    Chave de autenticação global da Evolution API
+                    (AUTHENTICATION_API_KEY). Deixe vazio para manter a atual.
+                  </p>
+                </div>
+
+                <div className="h-px bg-border/50" />
+
+                <div className="space-y-2.5">
+                  <Label className="text-xs flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-primary" /> Intervalo de Verificação
+                  </Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {INTERVAL_OPTIONS.map((opt) => {
+                      const active = evoInterval === opt.seconds;
+                      return (
+                        <button
+                          key={opt.seconds}
+                          type="button"
+                          onClick={() => setEvoInterval(opt.seconds)}
+                          className={`flex items-center justify-center gap-1.5 rounded-lg border px-3 py-2.5 text-xs font-mono transition-colors duration-150 ${
+                            active
+                              ? "border-primary/60 bg-primary/10 text-primary"
+                              : "border-border/50 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                          }`}
+                        >
+                          <Clock className="w-3.5 h-3.5" />
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Frequência com que o monitor verifica o status das instâncias.
+                    Valores menores detectam problemas mais rápido, mas geram mais
+                    requisições.
                   </p>
                 </div>
               </CardContent>
             </Card>
+
+            <div className="mt-4 rounded-lg border border-primary/20 bg-primary/5 p-3 flex items-start gap-2.5">
+              <Info className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                As configurações da Evolution API também podem ser definidas via
+                variáveis de ambiente no docker-compose (
+                <code className="font-mono text-foreground/80">EVOLUTION_API_URL</code>,{" "}
+                <code className="font-mono text-foreground/80">EVOLUTION_API_KEY</code>,{" "}
+                <code className="font-mono text-foreground/80">CHECK_INTERVAL</code>). As
+                configurações salvas pelo dashboard têm prioridade sobre as
+                variáveis de ambiente.
+              </p>
+            </div>
           </TabsContent>
 
           {/* ===== TELEGRAM ===== */}
