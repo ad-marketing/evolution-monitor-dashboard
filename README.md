@@ -13,6 +13,7 @@ Desenvolvido em **React + Vite + TailwindCSS**, servido via **Nginx** em contain
 - **Modo demo**: Exibe dados de exemplo quando não há API conectada
 - **Proxy integrado**: Nginx faz proxy das requisições `/api/*` para o monitor Go
 - **Integração Traefik**: Labels prontas para SSL automático via Let's Encrypt
+- **Tela de Configurações**: 4 abas (Evolution, Telegram, Template, Chatwoot) para gerenciar tudo sem reiniciar containers
 
 ## Pré-requisito
 
@@ -48,13 +49,14 @@ services:
       - CHECK_INTERVAL=60000
       - MAX_RESTART_ATTEMPTS=3
       - WAIT_AFTER_RESTART=10000
-      # ====== NOTIFICAÇÃO VIA API EXTERNA ======
-      # Pode ser a mesma API monitorada ou outra API externa para enviar alertas
-      - NOTIFICATION_API_URL=https://SUA_URL_EVOLUTION_AQUI
-      - NOTIFICATION_API_KEY=SUA_API_KEY_AQUI
-      - NOTIFICATION_SENDER_INSTANCE=INSTANCIA_QUE_ENVIA_ALERTA
-      - NOTIFICATION_ADMIN_NUMBER=5500000000000
-      - NOTIFICATION_ENABLED=true
+      # ====== TELEGRAM (pode ser configurado via dashboard) ======
+      - TELEGRAM_BOT_TOKEN=
+      - TELEGRAM_CHAT_ID=
+      - TELEGRAM_ENABLED=true
+      # ====== CHATWOOT RECONNECTOR (pode ser configurado via dashboard) ======
+      - CHATWOOT_RECONNECT_ENABLED=false
+      - CHATWOOT_RECONNECT_INTERVAL=30
+      - CHATWOOT_RECONNECT_ON_RECONNECT=false
       # ====== SERVIDOR HTTP (DASHBOARD API) ======
       - SERVER_PORT=3500
       # ====== CONFIGURAÇÕES AVANÇADAS ======
@@ -115,20 +117,30 @@ networks:
 |-------------|-----------|---------|
 | `SUA_URL_EVOLUTION_AQUI` | URL da Evolution API monitorada | `https://evo.seudominio.com.br` |
 | `SUA_API_KEY_AQUI` | API Key global da Evolution API | `SUA_CHAVE_AQUI` |
-| `INSTANCIA_QUE_ENVIA_ALERTA` | Instância que enviará os alertas | `MinhaInstancia` |
-| `5500000000000` | Número WhatsApp para receber alertas | `5511999999999` |
 | `monitor.seudominio.com.br` | Subdomínio do dashboard | `monitor.empresa.com.br` |
 | `SuaRedeAqui` | Nome da rede overlay (mesma do Traefik) | `MinhaRede` |
 
-## Notificação via API Externa
+## Tela de Configurações
 
-Se a VPS monitorada possui apenas **uma instância**, configure a notificação por outra VPS:
+A tela de Configurações (ícone **Config** no cabeçalho) reúne 4 abas para gerenciar o monitor sem reiniciar containers:
 
-```
-EVOLUTION_API_URL=https://evo.vps-monitorada.com.br    # API monitorada
-NOTIFICATION_API_URL=https://evo.outra-vps.com.br      # API que envia o alerta
-NOTIFICATION_SENDER_INSTANCE=InstanciaOutraVPS          # Instância da outra VPS
-```
+| Aba | O que configura |
+|-----|------------------|
+| **Evolution** | URL da API, API Key e intervalo de verificação |
+| **Telegram** | Token do bot, Chat ID, ativação e botão de teste de notificação |
+| **Template** | Editor do texto do alerta com variáveis dinâmicas |
+| **Chatwoot** | Chatwoot Reconnector — re-sincronização da integração (ver abaixo) |
+
+### Aba Chatwoot (v2.2.0)
+
+O **Chatwoot Reconnector** re-sincroniza automaticamente a integração nativa Evolution ↔ Chatwoot, evitando a perda do vínculo com a inbox quando uma instância reconecta. A aba permite:
+
+- **Ativar/desativar** o reconnector
+- **Intervalo periódico** (Modo A) — re-sincroniza todas as instâncias conectadas a cada N minutos (padrão: 30)
+- **Re-sincronizar ao reconectar** (Modo B) — re-aplica a integração logo após o monitor reconectar uma instância
+- **Re-sincronizar agora** — dispara uma re-sincronização manual imediata
+
+Detalhes técnicos no [README do backend](https://github.com/ad-marketing/evolution-monitor-go#chatwoot-reconnector-v220).
 
 ## Desenvolvimento Local
 
@@ -165,8 +177,10 @@ VITE_MONITOR_API_URL=http://localhost:3500
 .
 ├── client/src/
 │   ├── components/dashboard/  # Componentes do dashboard
-│   ├── hooks/useMonitor.ts    # Hook de conexão com API
+│   ├── hooks/useMonitor.ts    # Hook de conexão com API (status/instâncias)
+│   ├── hooks/useSettings.ts   # Hook de configurações (settings/chatwoot)
 │   ├── pages/Dashboard.tsx    # Página principal
+│   ├── pages/Settings.tsx     # Tela de configurações (4 abas)
 │   └── index.css              # Tema Command Center
 ├── Dockerfile                 # Build multi-stage (Node → Nginx)
 ├── nginx.conf                 # Config Nginx (SPA + proxy API)
@@ -182,6 +196,8 @@ VITE_MONITOR_API_URL=http://localhost:3500
 - [x] Auto-refresh
 - [x] Modo demo
 - [x] Integração Traefik + Docker Swarm
+- [x] Tela de Configurações (Evolution, Telegram, Template)
+- [x] Aba Chatwoot — Chatwoot Reconnector (v2.2.0)
 - [ ] Histórico de eventos (timeline)
 - [ ] Gráficos de uptime
 - [ ] Autenticação (login)

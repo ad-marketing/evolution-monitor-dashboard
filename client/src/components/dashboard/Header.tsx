@@ -1,6 +1,7 @@
 import { MonitorStats } from "@/hooks/useMonitor";
-import { Activity, RefreshCw } from "lucide-react";
+import { Activity, RefreshCw, Settings as SettingsIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Link } from "wouter";
 
 interface HeaderProps {
   stats: MonitorStats | null;
@@ -58,6 +59,18 @@ export function Header({ stats, lastUpdate, onRefresh }: HeaderProps) {
             <RefreshCw className="w-3.5 h-3.5" />
             Refresh
           </Button>
+
+          {/* Settings button */}
+          <Link href="/settings">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs font-mono border-border/50 hover:border-primary/50 hover:text-primary transition-colors duration-150"
+            >
+              <SettingsIcon className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Config</span>
+            </Button>
+          </Link>
         </div>
       </div>
     </header>
