@@ -10,15 +10,15 @@ Desenvolvido em **React + Vite + TailwindCSS**, servido via **Nginx** em contain
 - **Indicadores visuais**: Cards com contadores (online, offline, reconectadas, ignoradas)
 - **Tabela de instâncias**: Lista detalhada com status, tentativas e última verificação
 - **Auto-refresh**: Atualiza automaticamente a cada 15 segundos
-- **Tela de Configurações**: 3 abas (Evolution | Telegram | Template)
+- **Tela de Configurações**: 4 abas (Evolution | Telegram | Template | Chatwoot)
   - **Evolution**: URL da API, API Key Global, Intervalo de verificação
   - **Telegram**: Token do Bot, Chat ID + tutorial integrado
   - **Template**: Editor de mensagem personalizável com variáveis dinâmicas
+  - **Chatwoot**: Chatwoot Reconnector — re-sincronização da integração nativa (v2.2.0)
 - **Teste de notificação**: Botão para enviar notificação de teste antes de salvar
 - **Modo demo**: Exibe dados de exemplo quando não há API conectada
 - **Proxy integrado**: Nginx faz proxy das requisições `/api/*` para o monitor Go
 - **Integração Traefik**: Labels prontas para SSL automático via Let's Encrypt
-- **Tela de Configurações**: 4 abas (Evolution, Telegram, Template, Chatwoot) para gerenciar tudo sem reiniciar containers
 
 ## Pré-requisito
 
@@ -61,6 +61,10 @@ services:
       - TELEGRAM_BOT_TOKEN=
       - TELEGRAM_CHAT_ID=
       - TELEGRAM_ENABLED=true
+      # ====== CHATWOOT RECONNECTOR (pode ser configurado via dashboard) ======
+      - CHATWOOT_RECONNECT_ENABLED=false
+      - CHATWOOT_RECONNECT_INTERVAL=30
+      - CHATWOOT_RECONNECT_ON_RECONNECT=false
       # ====== SERVIDOR HTTP (DASHBOARD API) ======
       - SERVER_PORT=3500
       # ====== CONFIGURAÇÕES AVANÇADAS ======
@@ -173,6 +177,17 @@ A instância *{{instance_name}}* não reconectou após {{attempts}}/{{max_attemp
 Verifique o painel ou escaneie o QR Code novamente.
 ```
 
+## Chatwoot Reconnector (v2.2.0)
+
+A aba **Chatwoot** re-sincroniza automaticamente a integração nativa Evolution ↔ Chatwoot, evitando a perda do vínculo com a inbox quando uma instância reconecta. Permite:
+
+- **Ativar/desativar** o reconnector
+- **Intervalo periódico** (Modo A) — re-sincroniza todas as instâncias conectadas a cada N minutos (padrão: 30)
+- **Re-sincronizar ao reconectar** (Modo B) — re-aplica a integração logo após o monitor reconectar uma instância
+- **Re-sincronizar agora** — dispara uma re-sincronização manual imediata
+
+Detalhes técnicos no [README do backend](https://github.com/ad-marketing/evolution-monitor-go#chatwoot-reconnector-v220).
+
 ## Desenvolvimento Local
 
 ```bash
@@ -208,10 +223,11 @@ VITE_MONITOR_API_URL=http://localhost:3500
 .
 ├── client/src/
 │   ├── components/dashboard/  # Componentes do dashboard
-│   ├── hooks/useMonitor.ts    # Hook de conexão com API
+│   ├── hooks/useMonitor.ts    # Hook de conexão com API (status/instâncias)
+│   ├── hooks/useSettings.ts   # Hook de configurações (settings/chatwoot)
 │   ├── pages/
 │   │   ├── Dashboard.tsx      # Página principal
-│   │   └── Settings.tsx       # Configurações (Evolution | Telegram | Template)
+│   │   └── Settings.tsx       # Configurações (Evolution | Telegram | Template | Chatwoot)
 │   └── index.css              # Tema Command Center
 ├── Dockerfile                 # Build multi-stage (Node → Nginx)
 ├── nginx.conf                 # Config Nginx (SPA + proxy API)
@@ -226,12 +242,11 @@ VITE_MONITOR_API_URL=http://localhost:3500
 - [x] Tabela de instâncias
 - [x] Auto-refresh
 - [x] Modo demo
-- [x] Tela de configurações com 3 abas (Evolution | Telegram | Template)
+- [x] Tela de configurações com 4 abas (Evolution | Telegram | Template | Chatwoot)
 - [x] Configuração da Evolution API via dashboard
 - [x] Intervalo de verificação configurável
 - [x] Teste de notificação pelo dashboard
 - [x] Integração Traefik + Docker Swarm
-- [x] Tela de Configurações (Evolution, Telegram, Template)
 - [x] Aba Chatwoot — Chatwoot Reconnector (v2.2.0)
 - [ ] Histórico de eventos (timeline)
 - [ ] Gráficos de uptime
